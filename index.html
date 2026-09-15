@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bản tin tài chính Việt Nam &amp; Windows 11</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f5;
+    --card: #ffffff;
+    --ink: #1a1a18;
+    --muted: #6b6b66;
+    --line: #e3e3de;
+    --accent: #1f5f4e;
+    --warn-bg: #fff4e0;
+    --warn-ink: #8a5300;
+    --warn-line: #e8c98a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a;
+      --card: #1f1f23;
+      --ink: #ececea;
+      --muted: #9a9a95;
+      --line: #32323a;
+      --accent: #6fcfae;
+      --warn-bg: #3a2c12;
+      --warn-ink: #f2c67a;
+      --warn-line: #6b5220;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 20px) 16px calc(env(safe-area-inset-bottom, 0px) + 40px);
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .meta {
+    color: var(--muted);
+    font-size: 0.875rem;
+    margin: 0 0 18px;
+  }
+  .stale {
+    background: var(--warn-bg);
+    color: var(--warn-ink);
+    border: 1px solid var(--warn-line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.875rem;
+    margin: 0 0 16px;
+  }
+  ol {
+    list-style: none;
+    counter-reset: item;
+    margin: 0;
+    padding: 0;
+  }
+  li {
+    counter-increment: item;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 14px 12px 44px;
+    margin-bottom: 8px;
+    position: relative;
+  }
+  li::before {
+    content: counter(item);
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: var(--card);
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .k {
+    font-weight: 700;
+    color: var(--accent);
+    margin-right: 4px;
+  }
+  .up { color: #1a7f4b; font-weight: 600; }
+  .down { color: #c0392b; font-weight: 600; }
+  @media (prefers-color-scheme: dark) {
+    .up { color: #5fd18f; }
+    .down { color: #ff8a7a; }
+  }
+  footer {
+    margin-top: 24px;
+    color: var(--muted);
+    font-size: 0.75rem;
+    text-align: center;
+  }
+  .err {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Bản tin tài chính Việt Nam &amp; Windows 11</h1>
+  <p class="meta" id="meta">Đang tải…</p>
+  <div id="stale"></div>
+  <ol id="list"></ol>
+  <footer id="foot"></footer>
+</main>
+<script>
+(function () {
+  var listEl = document.getElementById('list');
+  var metaEl = document.getElementById('meta');
+  var staleEl = document.getElementById('stale');
+  var footEl = document.getElementById('foot');
+
+  function esc(s) {
+    return String(s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
+  // Tô màu các mức tăng/giảm dạng (+1,23%) hoặc (-0,39%) để quét mắt nhanh.
+  function colorize(s) {
+    return esc(s).replace(/([+-]\s?\d[\d.,]*\s?(?:%|điểm|đ\b))/g, function (m) {
+      return '<span class="' + (m.trim()[0] === '+' ? 'up' : 'down') + '">' + m + '</span>';
+    });
+  }
+
+  function fail(msg) {
+    metaEl.textContent = '';
+    listEl.innerHTML = '<li class="err">' + esc(msg) + '</li>';
+  }
+
+  fetch('data.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (d) {
+      metaEl.textContent = d.title_line || '';
+
+      var ts = Date.parse(d.generated_at);
+      if (!isNaN(ts)) {
+        var hours = (Date.now() - ts) / 36e5;
+        if (hours > 24) {
+          staleEl.innerHTML =
+            '<div class="stale">Bản tin này đã cũ khoảng ' +
+            Math.floor(hours / 24) +
+            ' ngày. Tác vụ tự động có thể đang gặp sự cố — số liệu bên dưới không phải của phiên gần nhất.</div>';
+        }
+      }
+
+      (d.lines || []).forEach(function (item) {
+        var li = document.createElement('li');
+        li.innerHTML = '<span class="k">' + esc(item.key) + '</span>' + colorize(item.text);
+        listEl.appendChild(li);
+      });
+
+      footEl.textContent = 'Cập nhật tự động mỗi ngày lúc 6:00 sáng giờ Việt Nam.';
+    })
+    .catch(function (e) {
+      fail('Không tải được dữ liệu bản tin (' + e.message + '). Vui lòng thử lại sau.');
+    });
+})();
+</script>
+</body>
+</html>
