@@ -23,7 +23,7 @@ def fetch_articles():
             for entry in feed.entries[:15]:
                 articles.append({
                     "title": entry.get("title", ""),
-                    "summary": entry.get("summary", "")[:200],
+                    "summary": entry.get("summary", ""),
                     "link": entry.get("link", ""),
                     "source": feed.feed.get("title", url),
                 })
